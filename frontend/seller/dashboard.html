@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — KrishiBandhu Seller</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['seller']);
+if (user) { renderLayout('seller', 'dashboard', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<div class="welcome-banner"><div><h1>Welcome, ${user.name.split(' ')[0]} 🌾</h1><p>Manage your products and orders.</p></div></div><div id="area"><div class="spinner"></div></div>`;
+    try {
+        const [{ products }, { items }] = await Promise.all([api.get('/marketplace/mine'), api.get('/orders/seller/mine')]);
+        const totalStock = products.reduce((s, p) => s + p.stock, 0);
+        const pendingOrders = items.filter(i => i.order_status === 'pending').length;
+        const revenue = items.filter(i => i.order_status !== 'cancelled').reduce((s, i) => s + i.price * i.quantity, 0);
+
+        const area = document.getElementById('area');
+        area.innerHTML = `
+            <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+                <div class="stat-tile"><div class="stat-icon icon-green"><i class="fa-solid fa-boxes-stacked"></i></div><div class="stat-label">Products Listed</div><div class="stat-value">${products.length}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-blue"><i class="fa-solid fa-cubes"></i></div><div class="stat-label">Total Stock</div><div class="stat-value">${totalStock}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-label">Pending Orders</div><div class="stat-value">${pendingOrders}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-purple"><i class="fa-solid fa-indian-rupee-sign"></i></div><div class="stat-label">Total Revenue</div><div class="stat-value">₹${revenue.toLocaleString('en-IN')}</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Recent Orders</h3><a class="link" href="orders.html">View All</a></div>
+                ${items.slice(0,6).map(i => `
+                    <div class="list-row">
+                        <span>${i.product_name} × ${i.quantity} — ${i.buyer_name}</span>
+                        <span class="pill pill-green">${i.order_status}</span>
+                    </div>
+                `).join('') || '<div class="empty-state"><p>No orders yet.</p></div>'}
+                <a href="add-product.html" class="btn btn-primary mt-2">Add New Product</a>
+            </div>
+        `;
+    } catch (err) { document.getElementById('area').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+</script>
+</body>
+</html>

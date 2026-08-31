@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consultations Monitor — KrishiBandhu Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['admin']);
+if (user) { renderLayout('admin', 'consultations', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Consultations Monitor</h1>
+            <div class="flex-gap">
+                <select class="form-control" id="typeFilter" style="width:160px;">
+                    <option value="">All Types</option>
+                    <option value="chat">Chat</option>
+                    <option value="consultation">Consultation</option>
+                    <option value="video">Video</option>
+                </select>
+                <select class="form-control" id="statusFilter" style="width:180px;">
+                    <option value="">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+        </div>
+        <div class="card"><table>
+            <thead><tr><th>Subject</th><th>Farmer</th><th>Expert</th><th>Type</th><th>Status</th><th>Created</th></tr></thead>
+            <tbody id="tblBody"><tr><td colspan="6" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+    `;
+    document.getElementById('typeFilter').addEventListener('change', refresh);
+    document.getElementById('statusFilter').addEventListener('change', refresh);
+    await refresh();
+}
+
+async function refresh() {
+    const type = document.getElementById('typeFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (type) params.set('type', type);
+    if (status) params.set('status', status);
+    const tbody = document.getElementById('tblBody');
+    try {
+        const { consultations } = await api.get(`/admin/consultations${params.toString() ? '?' + params.toString() : ''}`);
+        if (consultations.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">No consultations found.</td></tr>'; return; }
+        tbody.innerHTML = consultations.map(c => `
+            <tr>
+                <td><strong>${c.subject || 'General question'}</strong></td>
+                <td>${c.farmer_name}</td>
+                <td>${c.expert_name || '—'}</td>
+                <td><span class="pill pill-blue">${c.type}</span></td>
+                <td><span class="pill ${c.status === 'open' ? 'pill-orange' : c.status === 'completed' ? 'pill-green' : c.status === 'cancelled' ? 'pill-red' : 'pill-purple'}">${c.status}</span></td>
+                <td>${formatDate(c.created_at)}</td>
+            </tr>
+        `).join('');
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`; }
+}
+</script>
+</body>
+</html>

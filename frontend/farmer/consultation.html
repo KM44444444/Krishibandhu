@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consultation — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'consultation', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Request a Consultation</h1>
+        <div class="dash-grid">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header"><h3>New Consultation Request</h3></div>
+                    <form id="consultForm">
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <textarea class="form-control" id="subject" placeholder="Describe what you'd like guidance on..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Request</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <div class="card-header"><h3>My Consultations</h3></div>
+                    <div id="list"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('consultForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/consultations', { type: 'consultation', subject: document.getElementById('subject').value });
+            document.getElementById('subject').value = '';
+            await refresh();
+        } catch (err) { alert(err.message); }
+    });
+    await refresh();
+}
+
+async function refresh() {
+    const list = document.getElementById('list');
+    try {
+        const { consultations } = await api.get('/consultations/mine');
+        const items = consultations.filter(c => c.type === 'consultation');
+        if (items.length === 0) { list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No consultations yet.</p></div>'; return; }
+        list.innerHTML = items.map(c => `
+            <div class="list-row">
+                <div>
+                    <div style="font-weight:600;font-size:13px;">${c.subject}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">${c.expert_name || 'Waiting for expert'} · ${timeAgo(c.created_at)}</div>
+                </div>
+                <span class="pill ${c.status === 'completed' ? 'pill-green' : 'pill-blue'}">${c.status}</span>
+            </div>
+        `).join('');
+    } catch (err) { list.innerHTML = `<p>${err.message}</p>`; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Government Alerts — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['government']);
+if (user) { renderLayout('government', 'alerts', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Government Alerts</h1>
+        <div class="dash-grid">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header"><h3>Publish New Alert</h3></div>
+                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">This will notify all active farmers on the platform.</p>
+                    <form id="alertForm">
+                        <div class="form-group"><label>Title</label><input class="form-control" id="title" required></div>
+                        <div class="form-group"><label>Message</label><textarea class="form-control" id="message"></textarea></div>
+                        <button type="submit" class="btn btn-primary">Publish to All Farmers</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <div class="card-header"><h3>Past Alerts</h3></div>
+                    <div id="list"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('alertForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/admin/alerts', { title: document.getElementById('title').value, message: document.getElementById('message').value });
+            document.getElementById('title').value = ''; document.getElementById('message').value = '';
+            await refresh();
+        } catch (err) { alert(err.message); }
+    });
+    await refresh();
+}
+
+async function refresh() {
+    const list = document.getElementById('list');
+    try {
+        const { alerts } = await api.get('/admin/alerts');
+        if (alerts.length === 0) { list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No alerts published yet.</p></div>'; return; }
+        list.innerHTML = alerts.map(a => `
+            <div class="list-row">
+                <div><div style="font-weight:600;font-size:13px;">${a.title}</div><div style="font-size:12px;color:var(--text-muted)">${a.message || ''}</div></div>
+                <span style="font-size:11px;color:var(--text-faint)">${timeAgo(a.created_at)}</span>
+            </div>
+        `).join('');
+    } catch (err) { list.innerHTML = `<p>${err.message}</p>`; }
+}
+</script>
+</body>
+</html>

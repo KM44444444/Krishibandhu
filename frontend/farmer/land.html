@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Land Information — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'land', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Land Information</h1><div id="landTable"></div>`;
+    try {
+        const { farms } = await api.get('/farmer/farms');
+        const table = document.getElementById('landTable');
+        if (farms.length === 0) {
+            table.innerHTML = `<div class="card empty-state"><div class="icon"><i class="fa-solid fa-map"></i></div><h4>No land records</h4><p>Add a farm in Farm Profile to see land details here.</p><a href="farm-profile.html" class="btn btn-primary mt-2">Add Farm</a></div>`;
+            return;
+        }
+        table.innerHTML = `
+            <div class="card">
+                <table>
+                    <thead><tr><th>Farm</th><th>Location</th><th>Land Area</th><th>Land Type</th><th>Irrigation</th><th>Current Crop</th></tr></thead>
+                    <tbody>
+                        ${farms.map(f => `
+                            <tr>
+                                <td><strong>${f.farm_name}</strong></td>
+                                <td>${f.location || '—'}</td>
+                                <td>${f.land_area || '—'} ${f.land_unit || ''}</td>
+                                <td>${f.land_type || '—'}</td>
+                                <td>${f.irrigation_type || '—'}</td>
+                                <td>${f.current_crop || '—'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (err) {
+        document.getElementById('landTable').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

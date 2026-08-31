@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifications — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'notifications', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Notifications</h1>
+            <button class="btn btn-outline btn-sm" onclick="markAll()">Mark all as read</button>
+        </div>
+        <div class="card" id="notifCard"><div class="spinner"></div></div>
+    `;
+    await refresh();
+}
+
+async function refresh() {
+    const card = document.getElementById('notifCard');
+    try {
+        const { notifications } = await api.get('/notifications');
+        if (notifications.length === 0) { card.innerHTML = '<div class="empty-state"><p>No notifications yet.</p></div>'; return; }
+        card.innerHTML = notifications.map(n => {
+            const meta = NOTIF_ICON[n.type] || NOTIF_ICON.default;
+            return `
+                <div class="notif-item" style="cursor:pointer;${n.is_read ? 'opacity:0.6' : ''}" onclick="markRead(${n.id})">
+                    <div class="notif-icon" style="background:${meta.bg};color:${meta.color}"><i class="fa-solid ${meta.icon}"></i></div>
+                    <div>
+                        <h5>${n.title} ${!n.is_read ? '<span style="color:var(--green)">●</span>' : ''}</h5>
+                        <p>${n.message || ''}</p>
+                        <time>${timeAgo(n.created_at)}</time>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) { card.innerHTML = `<p>${err.message}</p>`; }
+}
+
+async function markRead(id) { try { await api.put(`/notifications/${id}/read`); await refresh(); } catch (err) {} }
+async function markAll() { try { await api.put('/notifications/read-all'); await refresh(); } catch (err) {} }
+</script>
+</body>
+</html>

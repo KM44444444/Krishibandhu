@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — KrishiBandhu Buyer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['buyer']);
+if (user) { renderLayout('buyer', 'dashboard', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<div class="welcome-banner"><div><h1>Welcome, ${user.name.split(' ')[0]} 🛒</h1><p>Browse and buy directly from agricultural sellers.</p></div></div><div id="area"><div class="spinner"></div></div>`;
+    try {
+        const [{ orders }, { products }] = await Promise.all([api.get('/orders/mine'), api.get('/marketplace')]);
+        const area = document.getElementById('area');
+        area.innerHTML = `
+            <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
+                <div class="stat-tile"><div class="stat-icon icon-green"><i class="fa-solid fa-box"></i></div><div class="stat-label">Total Orders</div><div class="stat-value">${orders.length}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-label">Pending</div><div class="stat-value">${orders.filter(o=>o.status==='pending').length}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-blue"><i class="fa-solid fa-store"></i></div><div class="stat-label">Products Available</div><div class="stat-value">${products.length}</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Recent Orders</h3><a class="link" href="orders.html">View All</a></div>
+                ${orders.slice(0,5).map(o => `
+                    <div class="list-row">
+                        <span>Order #ORD${o.id} · ${formatDate(o.created_at)}</span>
+                        <span class="pill pill-green">${o.status}</span>
+                    </div>
+                `).join('') || '<div class="empty-state"><p>No orders yet.</p></div>'}
+                <a href="marketplace.html" class="btn btn-primary mt-2">Browse Marketplace</a>
+            </div>
+        `;
+    } catch (err) { document.getElementById('area').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+</script>
+</body>
+</html>

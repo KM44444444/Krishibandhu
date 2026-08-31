@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soil Requests — KrishiBandhu Government</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['government']);
+if (user) { renderLayout('government', 'soil-requests', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Soil Testing Requests</h1>
+            <select class="form-control" id="statusFilter" style="width:200px;">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+        <div class="card"><table>
+            <thead><tr><th>Farmer</th><th>Farm</th><th>Type</th><th>Requested</th><th>Status</th><th></th></tr></thead>
+            <tbody id="tblBody"><tr><td colspan="6" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+    `;
+    document.getElementById('statusFilter').addEventListener('change', (e) => refresh(e.target.value));
+    await refresh();
+}
+
+async function refresh(status = '') {
+    const tbody = document.getElementById('tblBody');
+    try {
+        const { requests } = await api.get(`/soil/requests${status ? '?status=' + status : ''}`);
+        if (requests.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">No requests found.</td></tr>'; return; }
+        tbody.innerHTML = requests.map(r => `
+            <tr>
+                <td><strong>${r.farmer_name}</strong><br><span style="font-size:11px;color:var(--text-muted)">${r.farmer_phone || ''}</span></td>
+                <td>${r.farm_name || '—'}<br><span style="font-size:11px;color:var(--text-muted)">${r.location || ''}</span></td>
+                <td>${r.request_type}</td>
+                <td>${formatDate(r.requested_at)}</td>
+                <td><span class="pill ${r.status === 'pending' ? 'pill-orange' : r.status === 'processing' ? 'pill-blue' : r.status === 'completed' ? 'pill-green' : 'pill-red'}">${r.status}</span></td>
+                <td>
+                    ${r.status === 'pending' ? `<button class="btn btn-outline btn-sm" onclick="setProcessing(${r.id})">Start Processing</button>` : ''}
+                    ${r.status !== 'completed' && r.status !== 'rejected' ? `<a href="soil-testing.html?request=${r.id}" class="btn btn-primary btn-sm">Enter Results</a>` : ''}
+                    ${r.status === 'completed' ? `<a href="soil-testing.html?request=${r.id}" class="btn btn-outline btn-sm">View Report</a>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`; }
+}
+
+async function setProcessing(id) {
+    try { await api.put(`/soil/requests/${id}/status`, { status: 'processing' }); await refresh(document.getElementById('statusFilter').value); }
+    catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketplace Oversight — KrishiBandhu Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['admin']);
+if (user) { renderLayout('admin', 'marketplace', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Marketplace Oversight</h1>
+        <div class="card"><table>
+            <thead><tr><th>Product</th><th>Seller</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th></tr></thead>
+            <tbody id="tblBody"><tr><td colspan="6" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+    `;
+    try {
+        const { products } = await api.get('/marketplace');
+        const tbody = document.getElementById('tblBody');
+        if (products.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products listed yet.</td></tr>'; return; }
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td><strong>${p.name}</strong></td>
+                <td>${p.seller_name}</td>
+                <td>${p.category || '—'}</td>
+                <td>₹${p.price.toLocaleString('en-IN')}</td>
+                <td>${p.stock}</td>
+                <td><span class="pill ${p.status === 'active' ? 'pill-green' : 'pill-red'}">${p.status}</span></td>
+            </tr>
+        `).join('');
+    } catch (err) { document.getElementById('tblBody').innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`; }
+}
+</script>
+</body>
+</html>

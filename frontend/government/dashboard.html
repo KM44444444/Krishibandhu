@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — KrishiBandhu Government</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['government']);
+if (user) { renderLayout('government', 'dashboard', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<div class="welcome-banner"><div><h1>Welcome, ${user.name.split(' ')[0]} 🏛️</h1><p>Government Soil Testing & Verification Office</p></div></div><div id="dashArea"><div class="spinner"></div></div>`;
+
+    try {
+        const { requests } = await api.get('/soil/requests');
+        const pending = requests.filter(r => r.status === 'pending').length;
+        const processing = requests.filter(r => r.status === 'processing').length;
+        const completed = requests.filter(r => r.status === 'completed').length;
+
+        const area = document.getElementById('dashArea');
+        area.innerHTML = `
+            <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+                <div class="stat-tile"><div class="stat-icon icon-orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-label">Pending</div><div class="stat-value">${pending}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-blue"><i class="fa-solid fa-vial"></i></div><div class="stat-label">Processing</div><div class="stat-value">${processing}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-green"><i class="fa-solid fa-circle-check"></i></div><div class="stat-label">Completed</div><div class="stat-value">${completed}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-purple"><i class="fa-solid fa-list"></i></div><div class="stat-label">Total Requests</div><div class="stat-value">${requests.length}</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Recent Soil Requests</h3><a class="link" href="soil-requests.html">View All</a></div>
+                ${requests.slice(0, 6).map(r => `
+                    <div class="list-row">
+                        <div><div style="font-weight:600;font-size:13.5px;">${r.farmer_name}</div><div style="font-size:11.5px;color:var(--text-muted)">${r.farm_name || 'No farm linked'} · ${formatDate(r.requested_at)}</div></div>
+                        <span class="pill ${r.status === 'pending' ? 'pill-orange' : r.status === 'processing' ? 'pill-blue' : r.status === 'completed' ? 'pill-green' : 'pill-red'}">${r.status}</span>
+                    </div>
+                `).join('') || '<div class="empty-state"><p>No requests yet.</p></div>'}
+            </div>
+        `;
+    } catch (err) {
+        document.getElementById('dashArea').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

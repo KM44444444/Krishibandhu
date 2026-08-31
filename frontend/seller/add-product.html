@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Product — KrishiBandhu Seller</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['seller']);
+if (user) { renderLayout('seller', 'add-product', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Add New Product</h1>
+        <div class="card" style="max-width:560px;">
+            <form id="productForm">
+                <div class="form-group"><label>Product Name</label><input class="form-control" id="name" required></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Category</label>
+                        <select class="form-control" id="category">
+                            <option>Fertilizer</option><option>Seeds</option><option>Equipment</option><option>Pesticide</option><option>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Price (₹)</label><input type="number" class="form-control" id="price" required></div>
+                </div>
+                <div class="form-group"><label>Stock Quantity</label><input type="number" class="form-control" id="stock" required></div>
+                <div class="form-group"><label>Description</label><textarea class="form-control" id="description"></textarea></div>
+                <div class="form-group">
+                    <label>Product Image (optional)</label>
+                    <input type="file" class="form-control" id="imageFile" accept="image/png,image/jpeg,image/webp">
+                </div>
+                <button type="submit" class="btn btn-primary" id="submitBtn">List Product</button>
+            </form>
+        </div>
+    `;
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true; btn.textContent = 'Listing...';
+        try {
+            let image_url = null;
+            const fileInput = document.getElementById('imageFile');
+            if (fileInput.files.length > 0) {
+                btn.textContent = 'Uploading image...';
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                const token = localStorage.getItem('kb_token');
+                const uploadRes = await fetch(`${getApiBaseUrl()}/api/uploads/product-image`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok || !uploadData.success) throw new Error(uploadData.message || 'Image upload failed.');
+                image_url = uploadData.url;
+            }
+            btn.textContent = 'Listing...';
+            await api.post('/marketplace', {
+                name: document.getElementById('name').value,
+                category: document.getElementById('category').value,
+                price: parseFloat(document.getElementById('price').value),
+                stock: parseInt(document.getElementById('stock').value),
+                description: document.getElementById('description').value,
+                image_url,
+            });
+            window.location.href = 'products.html';
+        } catch (err) {
+            alert(err.message);
+            btn.disabled = false; btn.textContent = 'List Product';
+        }
+    });
+}
+</script>
+</body>
+</html>

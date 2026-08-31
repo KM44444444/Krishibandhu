@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — KrishiBandhu Expert</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['expert']);
+if (user) { renderLayout('expert', 'dashboard', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<div class="welcome-banner"><div><h1>Welcome, ${user.name.split(' ')[0]} 👨‍🔬</h1><p>Help farmers with their agricultural questions.</p></div></div><div id="area"><div class="spinner"></div></div>`;
+    try {
+        const { consultations } = await api.get('/consultations/expert/mine');
+        const open = consultations.filter(c => c.status === 'open').length;
+        const active = consultations.filter(c => ['assigned','in_progress'].includes(c.status)).length;
+        const completed = consultations.filter(c => c.status === 'completed').length;
+
+        const area = document.getElementById('area');
+        area.innerHTML = `
+            <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
+                <div class="stat-tile"><div class="stat-icon icon-orange"><i class="fa-solid fa-inbox"></i></div><div class="stat-label">Open Requests</div><div class="stat-value">${open}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-blue"><i class="fa-solid fa-comments"></i></div><div class="stat-label">Active</div><div class="stat-value">${active}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-green"><i class="fa-solid fa-circle-check"></i></div><div class="stat-label">Completed</div><div class="stat-value">${completed}</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Recent Requests</h3><a class="link" href="consultations.html">View All</a></div>
+                ${consultations.slice(0,6).map(c => `
+                    <div class="list-row">
+                        <div><div style="font-weight:600;font-size:13px;">${c.subject || 'General question'}</div><div style="font-size:11px;color:var(--text-muted)">${c.farmer_name} · ${c.type}</div></div>
+                        <span class="pill ${c.status === 'open' ? 'pill-orange' : 'pill-blue'}">${c.status}</span>
+                    </div>
+                `).join('') || '<div class="empty-state"><p>No requests yet.</p></div>'}
+            </div>
+        `;
+    } catch (err) { document.getElementById('area').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+</script>
+</body>
+</html>

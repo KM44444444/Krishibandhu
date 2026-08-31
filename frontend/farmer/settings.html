@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'settings', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Settings</h1>
+        <div class="card" style="max-width:480px;">
+            <div class="card-header"><h3>Profile Information</h3></div>
+            <div class="alert-box" id="settingsAlert"></div>
+            <form id="profileForm">
+                <div class="form-group"><label>Full Name</label><input class="form-control" id="name" value="${user.name}" required></div>
+                <div class="form-group"><label>Email</label><input class="form-control" value="${user.email}" disabled></div>
+                <div class="form-group"><label>Phone</label><input class="form-control" id="phone" value="${user.phone || ''}"></div>
+                <div class="form-group"><label>Role</label><input class="form-control" value="${user.role}" disabled style="text-transform:capitalize"></div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+    `;
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const { user: updated } = await api.put('/auth/me', { name: document.getElementById('name').value, phone: document.getElementById('phone').value });
+            localStorage.setItem('kb_user', JSON.stringify({ ...user, ...updated }));
+            const alertEl = document.getElementById('settingsAlert');
+            alertEl.textContent = 'Profile updated successfully.';
+            alertEl.className = 'alert-box success';
+        } catch (err) {
+            const alertEl = document.getElementById('settingsAlert');
+            alertEl.textContent = err.message;
+            alertEl.className = 'alert-box error';
+        }
+    });
+}
+</script>
+</body>
+</html>

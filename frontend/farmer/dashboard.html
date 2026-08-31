@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) {
+    renderLayout('farmer', 'dashboard', user);
+    loadDashboard();
+}
+
+async function loadDashboard() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = '<div class="spinner"></div>';
+
+    try {
+        const [summary, cropRec, fertRec] = await Promise.all([
+            api.get('/farmer/farms/dashboard-summary'),
+            api.get('/crops/recommendation/crop').catch(() => null),
+            api.get('/crops/recommendation/fertilizer').catch(() => null),
+        ]);
+
+        const { stats, farm, recentReport, activities, notifications } = summary;
+        const firstName = user.name.split(' ')[0];
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        content.innerHTML = `
+            <div class="welcome-banner">
+                <div>
+                    <h1>Welcome back, ${firstName}! 🌱</h1>
+                    <p>Here's what's happening on your farm today.</p>
+                </div>
+                <div class="weather-chip">
+                    <div>
+                        <div class="date">${today}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-tile">
+                    <div class="stat-icon icon-green"><i class="fa-solid fa-tractor"></i></div>
+                    <div class="stat-label">My Farms</div>
+                    <div class="stat-value">${stats.farms}</div>
+                    <div class="stat-sub">Active Farms</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-icon icon-orange"><i class="fa-solid fa-flask"></i></div>
+                    <div class="stat-label">Soil Reports</div>
+                    <div class="stat-value">${stats.soilReports}</div>
+                    <div class="stat-sub">Available</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-icon icon-blue"><i class="fa-solid fa-calendar-days"></i></div>
+                    <div class="stat-label">Crop Calendar</div>
+                    <div class="stat-value">${stats.upcomingActivities}</div>
+                    <div class="stat-sub">Upcoming Activities</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-icon icon-purple"><i class="fa-solid fa-comments"></i></div>
+                    <div class="stat-label">Consultations</div>
+                    <div class="stat-value">${stats.consultations}</div>
+                    <div class="stat-sub">Active</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-icon icon-green"><i class="fa-solid fa-cart-shopping"></i></div>
+                    <div class="stat-label">Orders</div>
+                    <div class="stat-value">${stats.orders}</div>
+                    <div class="stat-sub">This Month</div>
+                </div>
+            </div>
+
+            <div class="dash-grid">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header"><h3>My Farm Overview</h3></div>
+                        ${farm ? `
+                            <div class="farm-photo" style="display:flex;align-items:center;justify-content:center;font-size:40px;">🌾</div>
+                            <div class="farm-name">${farm.farm_name}</div>
+                            <div class="farm-location"><i class="fa-solid fa-location-dot"></i> ${farm.location || 'Location not set'}</div>
+                            <div class="farm-stats-strip">
+                                <div><span class="label">Total Land</span><span class="value">${farm.land_area || '—'} ${farm.land_unit || ''}</span></div>
+                                <div><span class="label">Irrigation</span><span class="value">${farm.irrigation_type || '—'}</span></div>
+                                <div><span class="label">Land Type</span><span class="value">${farm.land_type || '—'}</span></div>
+                                <div><span class="label">Current Crop</span><span class="value">${farm.current_crop || '—'}</span></div>
+                            </div>
+                        ` : `
+                            <div class="empty-state">
+                                <div class="icon"><i class="fa-solid fa-tractor"></i></div>
+                                <h4>No farms yet</h4>
+                                <p>Add your first farm to get started.</p>
+                                <a href="farm-profile.html" class="btn btn-primary mt-2">Add Farm</a>
+                            </div>
+                        `}
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>Upcoming Crop Activities</h3><a class="link" href="crop-calendar.html">View Full Calendar</a></div>
+                        ${activities.length === 0 ? '<div class="empty-state" style="padding:20px"><p>No upcoming activities.</p></div>' :
+                            activities.map(a => `
+                                <div class="activity-row">
+                                    <div class="left"><span class="dot">🌱</span><span>${a.activity}${a.crop_name ? ' — ' + a.crop_name : ''}</span></div>
+                                    <span class="pill pill-green">${formatDate(a.activity_date)}</span>
+                                </div>
+                            `).join('')}
+                    </div>
+                </div>
+
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header"><h3>Recent Soil Report</h3>${recentReport ? '<a class="link" href="soil-report.html">View Full Report</a>' : ''}</div>
+                        ${recentReport ? `
+                            <div class="flex-between mb-1">
+                                <div>
+                                    <div style="font-size:11.5px;color:var(--text-muted)">Report Date</div>
+                                    <div style="font-weight:700">${formatDate(recentReport.verified_at)}</div>
+                                </div>
+                                <span class="pill pill-green">Verified</span>
+                            </div>
+                            <div class="soil-mini-grid">
+                                <div class="soil-mini-item"><div class="k">pH</div><div class="v">${recentReport.ph ?? '—'}</div><div class="tag">Neutral</div></div>
+                                <div class="soil-mini-item"><div class="k">N</div><div class="v">${recentReport.nitrogen ?? '—'}</div><div class="tag">kg/ha</div></div>
+                                <div class="soil-mini-item"><div class="k">P</div><div class="v">${recentReport.phosphorus ?? '—'}</div><div class="tag">kg/ha</div></div>
+                                <div class="soil-mini-item"><div class="k">K</div><div class="v">${recentReport.potassium ?? '—'}</div><div class="tag">kg/ha</div></div>
+                                <div class="soil-mini-item"><div class="k">OC</div><div class="v">${recentReport.organic_carbon ?? '—'}%</div><div class="tag">Good</div></div>
+                            </div>
+                        ` : `
+                            <div class="empty-state" style="padding:20px">
+                                <p>No soil report yet.</p>
+                                <a href="soil-request.html" class="btn btn-primary btn-sm mt-2">Request Soil Test</a>
+                            </div>
+                        `}
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>Recent Notifications</h3><a class="link" href="notifications.html">View All</a></div>
+                        ${notifications.length === 0 ? '<div class="empty-state" style="padding:20px"><p>No notifications yet.</p></div>' :
+                            notifications.map(n => {
+                                const meta = NOTIF_ICON[n.type] || NOTIF_ICON.default;
+                                return `
+                                <div class="notif-item" style="padding:11px 0">
+                                    <div class="notif-icon" style="background:${meta.bg};color:${meta.color}"><i class="fa-solid ${meta.icon}"></i></div>
+                                    <div>
+                                        <h5>${n.title}</h5>
+                                        <p>${n.message || ''}</p>
+                                        <time>${timeAgo(n.created_at)}</time>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>Quick Actions</h3></div>
+                        <div class="quick-actions-grid">
+                            <a href="soil-request.html" class="quick-action-btn"><div class="icon-box icon-orange"><i class="fa-solid fa-flask"></i></div>Soil Request</a>
+                            <a href="expert-chat.html" class="quick-action-btn"><div class="icon-box icon-purple"><i class="fa-solid fa-user-doctor"></i></div>Ask Expert</a>
+                            <a href="marketplace.html" class="quick-action-btn"><div class="icon-box icon-green"><i class="fa-solid fa-cart-shopping"></i></div>Marketplace</a>
+                            <a href="learning.html" class="quick-action-btn"><div class="icon-box icon-blue"><i class="fa-solid fa-graduation-cap"></i></div>Learning Center</a>
+                            <a href="consultation.html" class="quick-action-btn"><div class="icon-box icon-purple"><i class="fa-solid fa-comments"></i></div>Consultation</a>
+                            <a href="video-consultation.html" class="quick-action-btn"><div class="icon-box icon-red"><i class="fa-solid fa-video"></i></div>Video Call</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-2">
+                <div class="card-header"><h3>Recommended for You</h3><a class="link" href="crop-recommendation.html">View All Recommendations</a></div>
+                <div class="recommend-row">
+                    <div class="thumb">🌱</div>
+                    <div>
+                        <h5>Crop Recommendation</h5>
+                        <p>${cropRec && cropRec.hasReport && cropRec.recommendations.length ? `Based on your soil health, we recommend ${cropRec.recommendations.map(r => r.crop.name).join(', ')}` : 'Submit a soil request to unlock personalized crop recommendations.'}</p>
+                    </div>
+                    <a href="crop-recommendation.html" class="arrow"><i class="fa-solid fa-chevron-right"></i></a>
+                </div>
+                <div class="recommend-row">
+                    <div class="thumb">🧴</div>
+                    <div>
+                        <h5>Fertilizer Recommendation</h5>
+                        <p>${fertRec && fertRec.hasReport ? fertRec.guidance.summary : 'Submit a soil request to unlock personalized fertilizer guidance.'}</p>
+                    </div>
+                    <a href="fertilizer-recommendation.html" class="arrow"><i class="fa-solid fa-chevron-right"></i></a>
+                </div>
+            </div>
+
+            <div class="bottom-banner">
+                <div>
+                    <h3>KrishiBandhu is with you always!</h3>
+                    <p>Get expert advice, the best recommendations, and the latest updates for better farming.</p>
+                </div>
+                <div class="banner-icon">🚜</div>
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

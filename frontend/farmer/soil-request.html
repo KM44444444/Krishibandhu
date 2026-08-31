@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soil Request — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'soil-request', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:6px;">Soil Testing Request</h1>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;max-width:640px;">
+            KrishiBandhu does not physically test soil. Submitting a request routes it to the Government office,
+            where <strong>physical soil testing</strong> is carried out. Once verified, your official report appears here.
+        </p>
+        <div class="dash-grid">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header"><h3>New Request</h3></div>
+                    <form id="requestForm">
+                        <div class="form-group">
+                            <label>Select Farm</label>
+                            <select class="form-control" id="farm_id" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Request Type</label>
+                            <select class="form-control" id="request_type">
+                                <option value="standard">Standard (pH, N, P, K, Organic Carbon)</option>
+                                <option value="detailed">Detailed (Full Micronutrient Panel)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Submit Request</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <div class="card-header"><h3>My Requests</h3></div>
+                    <div id="requestsList"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    try {
+        const { farms } = await api.get('/farmer/farms');
+        const select = document.getElementById('farm_id');
+        if (farms.length === 0) {
+            select.innerHTML = '<option value="">No farms — add one first</option>';
+        } else {
+            select.innerHTML = farms.map(f => `<option value="${f.id}">${f.farm_name}</option>`).join('');
+        }
+    } catch (err) { /* ignore */ }
+
+    document.getElementById('requestForm').addEventListener('submit', submitRequest);
+    await loadRequests();
+}
+
+async function submitRequest(e) {
+    e.preventDefault();
+    const farm_id = document.getElementById('farm_id').value;
+    const request_type = document.getElementById('request_type').value;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+    try {
+        await api.post('/soil/requests', { farm_id: farm_id || null, request_type });
+        btn.disabled = false; btn.textContent = 'Submit Request';
+        await loadRequests();
+    } catch (err) {
+        alert(err.message);
+        btn.disabled = false; btn.textContent = 'Submit Request';
+    }
+}
+
+const STATUS_PILL = { pending: 'pill-orange', processing: 'pill-blue', completed: 'pill-green', rejected: 'pill-red' };
+
+async function loadRequests() {
+    const list = document.getElementById('requestsList');
+    try {
+        const { requests } = await api.get('/soil/requests/mine');
+        if (requests.length === 0) {
+            list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No requests submitted yet.</p></div>';
+            return;
+        }
+        list.innerHTML = requests.map(r => `
+            <div class="list-row">
+                <div>
+                    <div style="font-weight:600;font-size:13.5px;">${r.farm_name || 'General Request'}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted)">${formatDate(r.requested_at)} · ${r.request_type}</div>
+                </div>
+                <span class="pill ${STATUS_PILL[r.status]}">${r.status}</span>
+            </div>
+        `).join('');
+    } catch (err) {
+        list.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

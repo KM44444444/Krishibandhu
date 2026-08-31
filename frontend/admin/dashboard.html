@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — KrishiBandhu Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['admin']);
+if (user) { renderLayout('admin', 'dashboard', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<div class="welcome-banner"><div><h1>System Overview ⚙️</h1><p>Platform-wide statistics and management</p></div></div><div id="area"><div class="spinner"></div></div>`;
+    try {
+        const { stats } = await api.get('/admin/stats');
+        const area = document.getElementById('area');
+        area.innerHTML = `
+            <div class="stat-row">
+                <div class="stat-tile"><div class="stat-icon icon-green"><i class="fa-solid fa-users"></i></div><div class="stat-label">Total Users</div><div class="stat-value">${stats.totalUsers}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-orange"><i class="fa-solid fa-tractor"></i></div><div class="stat-label">Total Farms</div><div class="stat-value">${stats.totalFarms}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-blue"><i class="fa-solid fa-cart-shopping"></i></div><div class="stat-label">Orders</div><div class="stat-value">${stats.totalOrders}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-purple"><i class="fa-solid fa-boxes-stacked"></i></div><div class="stat-label">Products Listed</div><div class="stat-value">${stats.totalProducts}</div></div>
+                <div class="stat-tile"><div class="stat-icon icon-red"><i class="fa-solid fa-flask"></i></div><div class="stat-label">Pending Soil Requests</div><div class="stat-value">${stats.pendingSoilRequests}</div></div>
+            </div>
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header"><h3>Users by Role</h3></div>
+                    ${Object.entries(stats.byRole).map(([role, count]) => `
+                        <div class="list-row"><span style="text-transform:capitalize">${role}</span><span class="pill pill-green">${count}</span></div>
+                    `).join('')}
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>Platform Activity</h3></div>
+                    <div class="list-row"><span>Active Consultations</span><span class="pill pill-purple">${stats.activeConsultations}</span></div>
+                    <div class="list-row"><span>Total Marketplace Revenue</span><span class="pill pill-blue">₹${stats.revenue.toLocaleString('en-IN')}</span></div>
+                </div>
+            </div>
+            <div class="flex-gap mt-3">
+                <a href="users.html" class="btn btn-primary">Manage Users</a>
+                <a href="crops.html" class="btn btn-outline">Manage Crop Database</a>
+                <a href="learning-videos.html" class="btn btn-outline">Manage Learning Videos</a>
+            </div>
+        `;
+    } catch (err) { document.getElementById('area').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+</script>
+</body>
+</html>

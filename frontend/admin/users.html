@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management — KrishiBandhu Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['admin']);
+if (user) { renderLayout('admin', 'users', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">User Management</h1>
+            <select class="form-control" id="roleFilter" style="width:200px;">
+                <option value="">All Roles</option>
+                <option value="farmer">Farmer</option>
+                <option value="government">Government</option>
+                <option value="admin">Admin</option>
+                <option value="buyer">Buyer</option>
+                <option value="seller">Seller</option>
+                <option value="expert">Expert</option>
+            </select>
+        </div>
+        <div class="card"><table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+            <tbody id="tblBody"><tr><td colspan="6" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+    `;
+    document.getElementById('roleFilter').addEventListener('change', (e) => refresh(e.target.value));
+    await refresh();
+}
+
+async function refresh(role = '') {
+    const tbody = document.getElementById('tblBody');
+    try {
+        const { users } = await api.get(`/admin/users${role ? '?role=' + role : ''}`);
+        if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">No users found.</td></tr>'; return; }
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td><strong>${u.name}</strong></td>
+                <td>${u.email}</td>
+                <td><span class="pill pill-blue" style="text-transform:capitalize">${u.role}</span></td>
+                <td><span class="pill ${u.status === 'active' ? 'pill-green' : 'pill-red'}">${u.status}</span></td>
+                <td>${formatDate(u.created_at)}</td>
+                <td>
+                    <button class="btn btn-outline btn-sm" onclick="toggleStatus(${u.id}, '${u.status}')">${u.status === 'active' ? 'Deactivate' : 'Activate'}</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`; }
+}
+
+async function toggleStatus(id, currentStatus) {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    try { await api.put(`/admin/users/${id}/status`, { status: newStatus }); await refresh(document.getElementById('roleFilter').value); }
+    catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

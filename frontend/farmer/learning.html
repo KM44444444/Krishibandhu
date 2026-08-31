@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Center — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+<style>
+.video-card iframe { width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'learning', user); loadPage(); }
+
+function youtubeEmbed(url) {
+    const match = url.match(/(?:v=|\.be\/)([\w-]{6,})/);
+    const id = match ? match[1] : '';
+    return `https://www.youtube.com/embed/${id}`;
+}
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Learning Center</h1>
+            <select class="form-control" id="categoryFilter" style="width:220px;">
+                <option value="">All Categories</option>
+                <option>Farming Guides</option>
+                <option>Soil Guides</option>
+                <option>Disease Guides</option>
+                <option>Other Agricultural Guides</option>
+            </select>
+        </div>
+        <div class="grid grid-3" id="videoGrid"></div>
+    `;
+    document.getElementById('categoryFilter').addEventListener('change', (e) => refresh(e.target.value));
+    await refresh();
+}
+
+async function refresh(category = '') {
+    const grid = document.getElementById('videoGrid');
+    grid.innerHTML = '<div class="spinner"></div>';
+    try {
+        const { videos } = await api.get(`/videos${category ? '?category=' + encodeURIComponent(category) : ''}`);
+        if (videos.length === 0) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>No videos in this category yet.</p></div>'; return; }
+        grid.innerHTML = videos.map(v => `
+            <div class="card video-card">
+                <iframe src="${youtubeEmbed(v.youtube_url)}" title="${v.title}" allowfullscreen></iframe>
+                <h4 style="font-size:13.5px;margin-bottom:4px;">${v.title}</h4>
+                <span class="pill pill-green mb-1" style="margin-bottom:6px;">${v.category || 'General'}</span>
+                <p style="font-size:12px;color:var(--text-muted);">${v.description || ''}</p>
+            </div>
+        `).join('');
+    } catch (err) { grid.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+</script>
+</body>
+</html>

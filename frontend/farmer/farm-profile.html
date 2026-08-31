@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farm Profile — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'farm-profile', user); loadPage(); }
+
+let editingFarmId = null;
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Farm Profile</h1>
+            <button class="btn btn-primary" onclick="openForm()"><i class="fa-solid fa-plus"></i> Add Farm</button>
+        </div>
+        <div id="formCard" class="card mb-3" style="display:none;"></div>
+        <div id="farmsList" class="grid grid-2"></div>
+    `;
+    await refreshFarms();
+}
+
+async function refreshFarms() {
+    const list = document.getElementById('farmsList');
+    list.innerHTML = '<div class="spinner"></div>';
+    try {
+        const { farms } = await api.get('/farmer/farms');
+        if (farms.length === 0) {
+            list.innerHTML = `<div class="card empty-state" style="grid-column:1/-1"><div class="icon"><i class="fa-solid fa-tractor"></i></div><h4>No farms added yet</h4><p>Click "Add Farm" to create your first farm profile.</p></div>`;
+            return;
+        }
+        list.innerHTML = farms.map(f => `
+            <div class="card">
+                <div class="flex-between mb-2">
+                    <div class="farm-name">${f.farm_name}</div>
+                    <div class="flex-gap">
+                        <button class="btn btn-outline btn-sm" onclick='openForm(${JSON.stringify(f)})'><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteFarm(${f.id})"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="farm-location mb-2"><i class="fa-solid fa-location-dot"></i> ${f.location || 'No location set'}</div>
+                <div class="farm-stats-strip">
+                    <div><span class="label">Land Area</span><span class="value">${f.land_area || '—'} ${f.land_unit || ''}</span></div>
+                    <div><span class="label">Irrigation</span><span class="value">${f.irrigation_type || '—'}</span></div>
+                    <div><span class="label">Land Type</span><span class="value">${f.land_type || '—'}</span></div>
+                    <div><span class="label">Current Crop</span><span class="value">${f.current_crop || '—'}</span></div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        list.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+
+function openForm(farm = null) {
+    editingFarmId = farm ? farm.id : null;
+    const card = document.getElementById('formCard');
+    card.style.display = 'block';
+    card.innerHTML = `
+        <div class="card-header"><h3>${farm ? 'Edit Farm' : 'Add New Farm'}</h3></div>
+        <form id="farmForm">
+            <div class="form-row">
+                <div class="form-group"><label>Farm Name</label><input class="form-control" id="farm_name" value="${farm?.farm_name || ''}" required></div>
+                <div class="form-group"><label>Location</label><input class="form-control" id="location" value="${farm?.location || ''}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Land Area</label><input class="form-control" type="number" step="0.1" id="land_area" value="${farm?.land_area || ''}"></div>
+                <div class="form-group"><label>Land Unit</label>
+                    <select class="form-control" id="land_unit">
+                        <option value="acre" ${farm?.land_unit === 'acre' ? 'selected' : ''}>Acre</option>
+                        <option value="hectare" ${farm?.land_unit === 'hectare' ? 'selected' : ''}>Hectare</option>
+                        <option value="bigha" ${farm?.land_unit === 'bigha' ? 'selected' : ''}>Bigha</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Current Crop</label><input class="form-control" id="current_crop" value="${farm?.current_crop || ''}"></div>
+                <div class="form-group"><label>Irrigation Type</label>
+                    <select class="form-control" id="irrigation_type">
+                        <option value="">Select</option>
+                        <option ${farm?.irrigation_type === 'Drip Irrigation' ? 'selected' : ''}>Drip Irrigation</option>
+                        <option ${farm?.irrigation_type === 'Canal Irrigation' ? 'selected' : ''}>Canal Irrigation</option>
+                        <option ${farm?.irrigation_type === 'Sprinkler' ? 'selected' : ''}>Sprinkler</option>
+                        <option ${farm?.irrigation_type === 'Rain-fed' ? 'selected' : ''}>Rain-fed</option>
+                        <option ${farm?.irrigation_type === 'Borewell' ? 'selected' : ''}>Borewell</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group"><label>Land Type</label>
+                <select class="form-control" id="land_type">
+                    <option value="">Select</option>
+                    <option ${farm?.land_type === 'Loamy Soil' ? 'selected' : ''}>Loamy Soil</option>
+                    <option ${farm?.land_type === 'Clay Soil' ? 'selected' : ''}>Clay Soil</option>
+                    <option ${farm?.land_type === 'Sandy Soil' ? 'selected' : ''}>Sandy Soil</option>
+                    <option ${farm?.land_type === 'Black Soil' ? 'selected' : ''}>Black Soil</option>
+                    <option ${farm?.land_type === 'Alluvial Soil' ? 'selected' : ''}>Alluvial Soil</option>
+                </select>
+            </div>
+            <div class="flex-gap">
+                <button type="submit" class="btn btn-primary">${farm ? 'Save Changes' : 'Add Farm'}</button>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('formCard').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    `;
+    document.getElementById('farmForm').addEventListener('submit', submitFarm);
+}
+
+async function submitFarm(e) {
+    e.preventDefault();
+    const payload = {
+        farm_name: document.getElementById('farm_name').value,
+        location: document.getElementById('location').value,
+        land_area: parseFloat(document.getElementById('land_area').value) || null,
+        land_unit: document.getElementById('land_unit').value,
+        current_crop: document.getElementById('current_crop').value,
+        irrigation_type: document.getElementById('irrigation_type').value,
+        land_type: document.getElementById('land_type').value,
+    };
+    try {
+        if (editingFarmId) await api.put(`/farmer/farms/${editingFarmId}`, payload);
+        else await api.post('/farmer/farms', payload);
+        document.getElementById('formCard').style.display = 'none';
+        await refreshFarms();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function deleteFarm(id) {
+    if (!confirm('Delete this farm? This cannot be undone.')) return;
+    try {
+        await api.del(`/farmer/farms/${id}`);
+        await refreshFarms();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+</script>
+</body>
+</html>

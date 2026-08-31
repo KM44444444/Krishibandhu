@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketplace — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+<style>
+.product-card { display: flex; flex-direction: column; }
+.product-thumb { height: 120px; border-radius: 10px; background: var(--green-pale); display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 12px; }
+.product-card h4 { font-size: 14px; margin-bottom: 4px; }
+.product-card .price { font-size: 16px; font-weight: 800; color: var(--dark-green); margin: 6px 0; }
+</style>
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'marketplace', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Marketplace</h1>
+            <input class="form-control" id="searchBox" placeholder="Search products..." style="width:260px;">
+        </div>
+        <div class="grid grid-3" id="productGrid" style="grid-template-columns:repeat(4,1fr)"></div>
+    `;
+    document.getElementById('searchBox').addEventListener('input', debounce(() => refresh(document.getElementById('searchBox').value), 350));
+    await refresh();
+}
+
+function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }
+
+async function refresh(search = '') {
+    const grid = document.getElementById('productGrid');
+    grid.innerHTML = '<div class="spinner"></div>';
+    try {
+        const { products } = await api.get(`/marketplace${search ? '?search=' + encodeURIComponent(search) : ''}`);
+        if (products.length === 0) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>No products found.</p></div>'; return; }
+        grid.innerHTML = products.map(p => `
+            <div class="card product-card">
+                ${p.image_url ? `<div class="product-thumb" style="background-image:url('${getApiBaseUrl()}${p.image_url}');background-size:cover;background-position:center;"></div>` : `<div class="product-thumb">🧴</div>`}
+                <h4>${p.name}</h4>
+                <div style="font-size:11.5px;color:var(--text-muted)">${p.seller_name} · ${p.category || 'General'}</div>
+                <div class="price">₹${p.price.toLocaleString('en-IN')}</div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">${p.stock} in stock</div>
+                <button class="btn btn-primary btn-sm btn-block" onclick="buyNow(${p.id}, '${p.name.replace(/'/g,"")}', ${p.price})" ${p.stock === 0 ? 'disabled' : ''}>
+                    ${p.stock === 0 ? 'Out of Stock' : 'Buy Now'}
+                </button>
+            </div>
+        `).join('');
+    } catch (err) { grid.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+
+async function buyNow(productId, name, price) {
+    const qtyStr = prompt(`Quantity for "${name}" (₹${price} each):`, '1');
+    if (!qtyStr) return;
+    const quantity = parseInt(qtyStr);
+    if (!quantity || quantity < 1) return alert('Enter a valid quantity.');
+    try {
+        await api.post('/orders', { items: [{ product_id: productId, quantity }] });
+        alert('Order placed successfully!');
+        await refresh();
+    } catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

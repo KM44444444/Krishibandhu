@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Videos — KrishiBandhu Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['admin']);
+if (user) { renderLayout('admin', 'learning-videos', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Learning Video Management</h1>
+            <button class="btn btn-primary" onclick="toggleForm()"><i class="fa-solid fa-plus"></i> Add Video</button>
+        </div>
+        <div id="formCard" class="card mb-3" style="display:none;"></div>
+        <div class="card"><table>
+            <thead><tr><th>Title</th><th>Category</th><th>Status</th><th></th></tr></thead>
+            <tbody id="tblBody"><tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+    `;
+    await refresh();
+}
+
+function toggleForm() {
+    const card = document.getElementById('formCard');
+    const open = card.style.display === 'block';
+    card.style.display = open ? 'none' : 'block';
+    if (!open) {
+        card.innerHTML = `
+            <div class="card-header"><h3>Add Learning Video</h3></div>
+            <form id="videoForm">
+                <div class="form-group"><label>Title</label><input class="form-control" id="title" required></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Category</label>
+                        <select class="form-control" id="category">
+                            <option>Farming Guides</option><option>Soil Guides</option><option>Disease Guides</option><option>Other Agricultural Guides</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>YouTube URL</label><input class="form-control" id="youtube_url" placeholder="https://youtube.com/watch?v=..." required></div>
+                </div>
+                <div class="form-group"><label>Description</label><textarea class="form-control" id="description"></textarea></div>
+                <button type="submit" class="btn btn-primary">Add Video</button>
+            </form>
+        `;
+        document.getElementById('videoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await api.post('/videos', {
+                    title: document.getElementById('title').value,
+                    category: document.getElementById('category').value,
+                    youtube_url: document.getElementById('youtube_url').value,
+                    description: document.getElementById('description').value,
+                });
+                card.style.display = 'none';
+                await refresh();
+            } catch (err) { alert(err.message); }
+        });
+    }
+}
+
+async function refresh() {
+    const tbody = document.getElementById('tblBody');
+    try {
+        const { videos } = await api.get('/videos/all');
+        if (videos.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center">No videos added yet.</td></tr>'; return; }
+        tbody.innerHTML = videos.map(v => `
+            <tr>
+                <td><strong>${v.title}</strong></td>
+                <td>${v.category || '—'}</td>
+                <td><span class="pill ${v.status === 'active' ? 'pill-green' : 'pill-red'}">${v.status}</span></td>
+                <td>
+                    <button class="btn btn-outline btn-sm" onclick="toggleStatus(${v.id}, '${v.status}')">${v.status === 'active' ? 'Hide' : 'Show'}</button>
+                    <button class="btn btn-danger btn-sm" onclick="removeVideo(${v.id})"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="4">${err.message}</td></tr>`; }
+}
+
+async function toggleStatus(id, status) {
+    try { await api.put(`/videos/${id}`, { status: status === 'active' ? 'inactive' : 'active' }); await refresh(); }
+    catch (err) { alert(err.message); }
+}
+async function removeVideo(id) {
+    if (!confirm('Remove this video?')) return;
+    try { await api.del(`/videos/${id}`); await refresh(); } catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crop Calendar — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'crop-calendar', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Crop Calendar</h1>
+            <button class="btn btn-primary" onclick="toggleForm()"><i class="fa-solid fa-plus"></i> Add Activity</button>
+        </div>
+        <div id="formCard" class="card mb-3" style="display:none;"></div>
+        <div id="templateCard" class="card mb-3"></div>
+        <div class="card"><div class="card-header"><h3>All Activities</h3></div><div id="activitiesList"><div class="spinner"></div></div></div>
+    `;
+    await loadCropsForTemplate();
+    await refreshActivities();
+}
+
+async function loadCropsForTemplate() {
+    const card = document.getElementById('templateCard');
+    try {
+        const { farms } = await api.get('/farmer/farms');
+        const { crops } = await api.get('/crops');
+        card.innerHTML = `
+            <div class="card-header"><h3>Apply a Crop Calendar Template</h3></div>
+            <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Auto-generate a full activity schedule (land prep → harvest) from a crop's standard template.</p>
+            <div class="form-row">
+                <select class="form-control" id="tmplCrop">${crops.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+                <select class="form-control" id="tmplFarm">${farms.map(f => `<option value="${f.id}">${f.farm_name}</option>`).join('') || '<option value="">No farms</option>'}</select>
+            </div>
+            <div class="form-row">
+                <input type="date" class="form-control" id="tmplStart" value="${new Date().toISOString().slice(0,10)}">
+                <button class="btn btn-primary" onclick="applyTemplate()">Generate Schedule</button>
+            </div>
+        `;
+    } catch (err) { card.innerHTML = `<p>${err.message}</p>`; }
+}
+
+async function applyTemplate() {
+    try {
+        await api.post('/crops/calendar/apply-template', {
+            crop_id: document.getElementById('tmplCrop').value,
+            farm_id: document.getElementById('tmplFarm').value || null,
+            start_date: document.getElementById('tmplStart').value,
+        });
+        await refreshActivities();
+        alert('Schedule generated!');
+    } catch (err) { alert(err.message); }
+}
+
+function toggleForm() {
+    const card = document.getElementById('formCard');
+    const open = card.style.display === 'block';
+    card.style.display = open ? 'none' : 'block';
+    if (!open) {
+        card.innerHTML = `
+            <div class="card-header"><h3>Add Activity</h3></div>
+            <form id="activityForm">
+                <div class="form-row">
+                    <div class="form-group"><label>Activity Name</label><input class="form-control" id="activity" placeholder="e.g. Irrigation" required></div>
+                    <div class="form-group"><label>Date</label><input type="date" class="form-control" id="activity_date" required></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Add to Calendar</button>
+            </form>
+        `;
+        document.getElementById('activityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await api.post('/crops/calendar/mine', {
+                    activity: document.getElementById('activity').value,
+                    activity_date: document.getElementById('activity_date').value,
+                });
+                card.style.display = 'none';
+                await refreshActivities();
+            } catch (err) { alert(err.message); }
+        });
+    }
+}
+
+async function refreshActivities() {
+    const list = document.getElementById('activitiesList');
+    try {
+        const { activities } = await api.get('/crops/calendar/mine');
+        if (activities.length === 0) {
+            list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No activities scheduled yet.</p></div>';
+            return;
+        }
+        list.innerHTML = activities.map(a => `
+            <div class="activity-row">
+                <div class="left"><span class="dot">🌱</span>
+                    <div>
+                        <div style="font-weight:600;">${a.activity}${a.crop_name ? ' — ' + a.crop_name : ''}</div>
+                        <div style="font-size:11.5px;color:var(--text-muted)">${formatDate(a.activity_date)}</div>
+                    </div>
+                </div>
+                <div class="flex-gap">
+                    <span class="pill ${a.status === 'completed' ? 'pill-green' : a.status === 'overdue' ? 'pill-red' : 'pill-orange'}">${a.status}</span>
+                    ${a.status !== 'completed' ? `<button class="btn btn-outline btn-sm" onclick="markDone(${a.id})">Mark Done</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    } catch (err) { list.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+
+async function markDone(id) {
+    try { await api.put(`/crops/calendar/mine/${id}`, { status: 'completed' }); await refreshActivities(); }
+    catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

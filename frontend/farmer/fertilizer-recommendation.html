@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fertilizer Recommendation — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'fertilizer-recommendation', user); loadPage(); }
+
+const LEVEL_PILL = { low: 'pill-red', medium: 'pill-blue', high: 'pill-orange', unknown: 'pill-gray' };
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:6px;">Fertilizer Recommendation</h1>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;max-width:640px;">
+            Guidance derived from your verified N/P/K soil values. For precise dosing, consult a qualified agronomist.
+        </p>
+        <div id="recArea"><div class="spinner"></div></div>
+    `;
+    try {
+        const data = await api.get('/crops/recommendation/fertilizer');
+        const area = document.getElementById('recArea');
+        if (!data.hasReport) {
+            area.innerHTML = `<div class="card empty-state"><div class="icon"><i class="fa-solid fa-jar"></i></div><h4>No soil report yet</h4><p>${data.message}</p><a href="soil-request.html" class="btn btn-primary mt-2">Submit Soil Request</a></div>`;
+            return;
+        }
+        const g = data.guidance;
+        area.innerHTML = `
+            <div class="card mb-3" style="background:var(--green-pale);border:none;">
+                <p style="font-size:13px;color:var(--dark-green);font-weight:600;">${g.summary}</p>
+            </div>
+            <div class="grid grid-3">
+                ${g.advice.map(a => `
+                    <div class="card">
+                        <div class="flex-between mb-1">
+                            <h4 style="font-size:14px;">${a.nutrient}</h4>
+                            <span class="pill ${LEVEL_PILL[a.level]}">${a.level}</span>
+                        </div>
+                        <p style="font-size:12.5px;color:var(--text-muted);">${a.suggestion}</p>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="card mt-2" style="background:var(--orange-pale);border:none;">
+                <p style="font-size:12.5px;color:#8a5a1a;"><i class="fa-solid fa-circle-info"></i> ${g.disclaimer}</p>
+            </div>
+        `;
+    } catch (err) {
+        document.getElementById('recArea').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

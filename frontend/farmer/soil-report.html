@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soil Report — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'soil-report', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">Official Soil Report</h1><div id="reportArea"><div class="spinner"></div></div>`;
+
+    try {
+        const { report } = await api.get('/soil/reports/latest');
+        const area = document.getElementById('reportArea');
+        if (!report) {
+            area.innerHTML = `<div class="card empty-state"><div class="icon"><i class="fa-solid fa-flask"></i></div><h4>No verified report yet</h4><p>Submit a soil testing request — the government office will verify and publish your report here.</p><a href="soil-request.html" class="btn btn-primary mt-2">Submit Soil Request</a></div>`;
+            return;
+        }
+        area.innerHTML = `
+            <div class="card">
+                <div class="flex-between mb-2">
+                    <div>
+                        <div style="font-size:12px;color:var(--text-muted)">Farm: ${report.farm_name || '—'}</div>
+                        <div style="font-weight:700;font-size:15px;">Verified on ${formatDate(report.verified_at)}</div>
+                    </div>
+                    <span class="pill pill-green">Verified by ${report.verified_by || 'Government Office'}</span>
+                </div>
+                <div class="soil-mini-grid" style="grid-template-columns:repeat(6,1fr)">
+                    <div class="soil-mini-item"><div class="k">pH</div><div class="v">${report.ph ?? '—'}</div></div>
+                    <div class="soil-mini-item"><div class="k">Nitrogen</div><div class="v">${report.nitrogen ?? '—'}</div><div class="tag">kg/ha</div></div>
+                    <div class="soil-mini-item"><div class="k">Phosphorus</div><div class="v">${report.phosphorus ?? '—'}</div><div class="tag">kg/ha</div></div>
+                    <div class="soil-mini-item"><div class="k">Potassium</div><div class="v">${report.potassium ?? '—'}</div><div class="tag">kg/ha</div></div>
+                    <div class="soil-mini-item"><div class="k">Org. Carbon</div><div class="v">${report.organic_carbon ?? '—'}%</div></div>
+                    <div class="soil-mini-item"><div class="k">Moisture</div><div class="v">${report.moisture ?? '—'}%</div></div>
+                </div>
+                ${report.remarks ? `<div class="mt-2" style="background:var(--bg);padding:14px;border-radius:10px;"><strong style="font-size:12.5px;">Government Remarks:</strong><p style="font-size:13px;margin-top:4px;">${report.remarks}</p></div>` : ''}
+                <div class="flex-gap mt-3">
+                    <a href="crop-recommendation.html" class="btn btn-primary btn-sm">View Crop Recommendations</a>
+                    <a href="fertilizer-recommendation.html" class="btn btn-outline btn-sm">View Fertilizer Guidance</a>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        document.getElementById('reportArea').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

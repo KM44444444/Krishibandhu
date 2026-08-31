@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Orders — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'orders', user); loadPage(); }
+
+const STATUS_PILL = { pending: 'pill-orange', accepted: 'pill-blue', shipped: 'pill-purple', delivered: 'pill-green', cancelled: 'pill-red' };
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `<h1 style="font-size:20px;font-weight:800;margin-bottom:18px;">My Orders</h1><div id="ordersList"><div class="spinner"></div></div>`;
+    try {
+        const { orders } = await api.get('/orders/mine');
+        const list = document.getElementById('ordersList');
+        if (orders.length === 0) { list.innerHTML = '<div class="card empty-state"><p>No orders yet. Visit the Marketplace to shop.</p></div>'; return; }
+        list.innerHTML = orders.map(o => `
+            <div class="card mb-2">
+                <div class="flex-between mb-2">
+                    <div>
+                        <div style="font-weight:700;">Order #ORD${o.id}</div>
+                        <div style="font-size:11.5px;color:var(--text-muted)">${formatDate(o.created_at)}</div>
+                    </div>
+                    <span class="pill ${STATUS_PILL[o.status]}">${o.status}</span>
+                </div>
+                ${o.items.map(it => `
+                    <div class="list-row">
+                        <span>${it.product_name} × ${it.quantity}</span>
+                        <span>₹${(it.price * it.quantity).toLocaleString('en-IN')}</span>
+                    </div>
+                `).join('')}
+                <div class="flex-between mt-2" style="border-top:1px solid var(--border);padding-top:10px;">
+                    <strong>Total</strong>
+                    <strong>₹${o.total_amount.toLocaleString('en-IN')}</strong>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('ordersList').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

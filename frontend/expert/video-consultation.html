@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Consultation — KrishiBandhu Expert</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['expert']);
+if (user) { renderLayout('expert', 'video-consultation', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-2">
+            <h1 style="font-size:20px;font-weight:800;">Video Consultation Requests</h1>
+            <span class="pill pill-orange">Live call requires production implementation</span>
+        </div>
+        <div id="list" class="mt-2"><div class="spinner"></div></div>
+    `;
+    try {
+        const { consultations } = await api.get('/consultations/expert/mine');
+        const items = consultations.filter(c => c.type === 'video');
+        const list = document.getElementById('list');
+        if (items.length === 0) { list.innerHTML = '<div class="card empty-state"><p>No video requests yet.</p></div>'; return; }
+        list.innerHTML = items.map(c => `
+            <div class="card mb-2">
+                <div class="flex-between">
+                    <div><div style="font-weight:700;">${c.subject}</div><div style="font-size:12px;color:var(--text-muted)">${c.farmer_name} · ${timeAgo(c.created_at)}</div></div>
+                    <div class="flex-gap">
+                        <span class="pill ${c.status === 'open' ? 'pill-orange' : 'pill-blue'}">${c.status}</span>
+                        ${c.status === 'open' ? `<button class="btn btn-primary btn-sm" onclick="accept(${c.id})">Accept</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) { document.getElementById('list').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+
+async function accept(id) {
+    try { await api.put(`/consultations/${id}/accept`); await loadPage(); } catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

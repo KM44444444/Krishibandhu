@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crop Recommendation — KrishiBandhu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['farmer']);
+if (user) { renderLayout('farmer', 'crop-recommendation', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <h1 style="font-size:20px;font-weight:800;margin-bottom:6px;">Crop Recommendation</h1>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;max-width:640px;">
+            Decision support based on your verified soil report. This is a starting point, not a replacement for a qualified agronomist.
+        </p>
+        <div id="recArea"><div class="spinner"></div></div>
+    `;
+    try {
+        const data = await api.get('/crops/recommendation/crop');
+        const area = document.getElementById('recArea');
+        if (!data.hasReport) {
+            area.innerHTML = `<div class="card empty-state"><div class="icon"><i class="fa-solid fa-seedling"></i></div><h4>No soil report yet</h4><p>${data.message}</p><a href="soil-request.html" class="btn btn-primary mt-2">Submit Soil Request</a></div>`;
+            return;
+        }
+        if (data.recommendations.length === 0) {
+            area.innerHTML = `<div class="card empty-state"><p>No strong crop matches found for your current soil profile. Try browsing the full crop database instead.</p></div>`;
+            return;
+        }
+        area.innerHTML = `
+            <div class="card mb-3">
+                <div class="card-header"><h3>Based on your latest soil report</h3></div>
+                <div class="soil-mini-grid">
+                    <div class="soil-mini-item"><div class="k">pH</div><div class="v">${data.report.ph}</div></div>
+                    <div class="soil-mini-item"><div class="k">N</div><div class="v">${data.report.nitrogen}</div></div>
+                    <div class="soil-mini-item"><div class="k">P</div><div class="v">${data.report.phosphorus}</div></div>
+                    <div class="soil-mini-item"><div class="k">K</div><div class="v">${data.report.potassium}</div></div>
+                    <div class="soil-mini-item"><div class="k">OC</div><div class="v">${data.report.organic_carbon}%</div></div>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                ${data.recommendations.map(r => `
+                    <div class="card">
+                        <div class="flex-between mb-1">
+                            <h3 style="font-size:15px;">${r.crop.name}</h3>
+                            <span class="pill pill-green">Match score ${r.score}</span>
+                        </div>
+                        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">${r.crop.description || ''}</p>
+                        <div style="font-size:12px;">
+                            ${r.reasons.map(rs => `<div style="margin-bottom:4px;"><i class="fa-solid fa-check" style="color:var(--green);margin-right:6px;"></i>${rs}</div>`).join('')}
+                        </div>
+                        <div class="flex-gap mt-2">
+                            <span class="pill pill-blue">${r.crop.season || 'season n/a'}</span>
+                            <span class="pill pill-gray">pH ${r.crop.ph_min}–${r.crop.ph_max}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="card mt-2" style="background:var(--orange-pale);border:none;">
+                <p style="font-size:12.5px;color:#8a5a1a;"><i class="fa-solid fa-circle-info"></i> This is automated decision support, not a replacement for a qualified agricultural professional. Consult your local Krishi Vigyan Kendra for confirmation.</p>
+            </div>
+        `;
+    } catch (err) {
+        document.getElementById('recArea').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>

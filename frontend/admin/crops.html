@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crop Management — KrishiBandhu Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['admin']);
+if (user) { renderLayout('admin', 'crops', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">Crop Database</h1>
+            <button class="btn btn-primary" onclick="toggleForm()"><i class="fa-solid fa-plus"></i> Add Crop</button>
+        </div>
+        <div id="formCard" class="card mb-3" style="display:none;"></div>
+        <div class="grid grid-3" id="cropGrid"></div>
+    `;
+    await refresh();
+}
+
+function toggleForm() {
+    const card = document.getElementById('formCard');
+    const open = card.style.display === 'block';
+    card.style.display = open ? 'none' : 'block';
+    if (!open) {
+        card.innerHTML = `
+            <div class="card-header"><h3>Add Crop</h3></div>
+            <form id="cropForm">
+                <div class="form-row">
+                    <div class="form-group"><label>Crop Name</label><input class="form-control" id="name" required></div>
+                    <div class="form-group"><label>Season</label>
+                        <select class="form-control" id="season">
+                            <option value="kharif">Kharif</option><option value="rabi">Rabi</option><option value="zaid">Zaid</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Soil Type</label><input class="form-control" id="soil_type" placeholder="e.g. loamy"></div>
+                    <div class="form-group"><label>pH Range</label>
+                        <div class="flex-gap"><input class="form-control" type="number" step="0.1" id="ph_min" placeholder="Min"><input class="form-control" type="number" step="0.1" id="ph_max" placeholder="Max"></div>
+                    </div>
+                </div>
+                <div class="form-group"><label>Description</label><textarea class="form-control" id="description"></textarea></div>
+                <button type="submit" class="btn btn-primary">Add Crop</button>
+            </form>
+        `;
+        document.getElementById('cropForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await api.post('/crops', {
+                    name: document.getElementById('name').value,
+                    season: document.getElementById('season').value,
+                    soil_type: document.getElementById('soil_type').value,
+                    ph_min: parseFloat(document.getElementById('ph_min').value) || null,
+                    ph_max: parseFloat(document.getElementById('ph_max').value) || null,
+                    description: document.getElementById('description').value,
+                });
+                card.style.display = 'none';
+                await refresh();
+            } catch (err) { alert(err.message); }
+        });
+    }
+}
+
+async function refresh() {
+    const grid = document.getElementById('cropGrid');
+    grid.innerHTML = '<div class="spinner"></div>';
+    try {
+        const { crops } = await api.get('/crops');
+        if (crops.length === 0) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>No crops in database yet.</p></div>'; return; }
+        grid.innerHTML = crops.map(c => `
+            <div class="card">
+                <div class="flex-between mb-1">
+                    <h4 style="font-size:14.5px;">${c.name}</h4>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCrop(${c.id})"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="flex-gap mb-2">
+                    <span class="pill pill-blue">${c.season || 'n/a'}</span>
+                    <span class="pill pill-gray">${c.soil_type || 'n/a'}</span>
+                    <span class="pill pill-green">pH ${c.ph_min ?? '?'}–${c.ph_max ?? '?'}</span>
+                </div>
+                <p style="font-size:12.5px;color:var(--text-muted)">${c.description || ''}</p>
+            </div>
+        `).join('');
+    } catch (err) { grid.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+
+async function deleteCrop(id) {
+    if (!confirm('Remove this crop from the database?')) return;
+    try { await api.del(`/crops/${id}`); await refresh(); } catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Details — KrishiBandhu Buyer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['buyer']);
+if (user) { renderLayout('buyer', 'marketplace', user); loadPage(); }
+
+function getProductId() { return new URLSearchParams(window.location.search).get('id'); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    const id = getProductId();
+    if (!id) { content.innerHTML = `<div class="card empty-state"><p>No product selected.</p><a href="marketplace.html" class="btn btn-primary mt-2">Back to Marketplace</a></div>`; return; }
+    content.innerHTML = '<div class="spinner"></div>';
+    try {
+        const { product } = await api.get(`/marketplace/${id}`);
+        content.innerHTML = `
+            <a href="marketplace.html" class="link-btn mb-2" style="display:inline-block"><i class="fa-solid fa-arrow-left"></i> Back to Marketplace</a>
+            <div class="grid grid-2 mt-2">
+                <div class="card" style="height:280px;display:flex;align-items:center;justify-content:center;font-size:60px;background:${product.image_url ? `url('${getApiBaseUrl()}${product.image_url}') center/cover` : 'var(--green-pale)'};border-radius:14px;">${product.image_url ? '' : '🧴'}</div>
+                <div class="card">
+                    <h2 style="font-size:20px;margin-bottom:6px;">${product.name}</h2>
+                    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Sold by ${product.seller_name} · ${product.category || 'General'}</div>
+                    <div style="font-size:26px;font-weight:800;color:var(--dark-green);margin-bottom:14px;">₹${product.price.toLocaleString('en-IN')}</div>
+                    <p style="font-size:13.5px;color:var(--text-muted);margin-bottom:16px;">${product.description || 'No description provided.'}</p>
+                    <div style="font-size:12.5px;margin-bottom:16px;">${product.stock > 0 ? `<span class="pill pill-green">${product.stock} in stock</span>` : '<span class="pill pill-red">Out of stock</span>'}</div>
+                    <div class="flex-gap">
+                        <input type="number" class="form-control" id="qty" value="1" min="1" style="width:90px;">
+                        <button class="btn btn-primary" onclick="buy(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>Place Order</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (err) { content.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`; }
+}
+
+async function buy(productId) {
+    const quantity = parseInt(document.getElementById('qty').value) || 1;
+    try {
+        await api.post('/orders', { items: [{ product_id: productId, quantity }] });
+        alert('Order placed successfully!');
+        window.location.href = 'orders.html';
+    } catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>

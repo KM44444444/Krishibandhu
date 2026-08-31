@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Products — KrishiBandhu Seller</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/dashboard.css">
+</head>
+<body>
+<div class="app-shell" id="app-shell"></div>
+
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/api.js"></script>
+<script>
+const user = requireAuth(['seller']);
+if (user) { renderLayout('seller', 'products', user); loadPage(); }
+
+async function loadPage() {
+    const content = document.getElementById('pageContent');
+    content.innerHTML = `
+        <div class="flex-between mb-3">
+            <h1 style="font-size:20px;font-weight:800;">My Products</h1>
+            <a href="add-product.html" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Product</a>
+        </div>
+        <div class="card"><table>
+            <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+            <tbody id="tblBody"><tr><td colspan="6" class="text-center"><div class="spinner"></div></td></tr></tbody>
+        </table></div>
+    `;
+    await refresh();
+}
+
+async function refresh() {
+    const tbody = document.getElementById('tblBody');
+    try {
+        const { products } = await api.get('/marketplace/mine');
+        if (products.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products listed yet.</td></tr>'; return; }
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td><strong>${p.name}</strong></td>
+                <td>${p.category || '—'}</td>
+                <td>₹${p.price.toLocaleString('en-IN')}</td>
+                <td>
+                    <input type="number" value="${p.stock}" style="width:70px" class="form-control" id="stock-${p.id}">
+                </td>
+                <td><span class="pill ${p.status === 'active' ? 'pill-green' : 'pill-red'}">${p.status}</span></td>
+                <td>
+                    <button class="btn btn-outline btn-sm" onclick="updateStock(${p.id})">Update</button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleStatus(${p.id}, '${p.status}')">${p.status === 'active' ? 'Hide' : 'Show'}</button>
+                    <button class="btn btn-danger btn-sm" onclick="removeProduct(${p.id})"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`; }
+}
+
+async function updateStock(id) {
+    const stock = parseInt(document.getElementById(`stock-${id}`).value);
+    try { await api.put(`/marketplace/${id}`, { stock }); await refresh(); } catch (err) { alert(err.message); }
+}
+async function toggleStatus(id, status) {
+    try { await api.put(`/marketplace/${id}`, { status: status === 'active' ? 'inactive' : 'active' }); await refresh(); }
+    catch (err) { alert(err.message); }
+}
+async function removeProduct(id) {
+    if (!confirm('Remove this product?')) return;
+    try { await api.del(`/marketplace/${id}`); await refresh(); } catch (err) { alert(err.message); }
+}
+</script>
+</body>
+</html>
