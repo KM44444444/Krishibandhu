@@ -1,7 +1,6 @@
 const db = require('../config/database');
 const { recommendCrops, recommendFertilizer } = require('../services/recommendation.service');
-
-// ---- Crop reference database (public to logged-in users) ----
+// Crop reference database (public to logged-in users)
 exports.listCrops = (req, res, next) => {
     try {
         const crops = db.prepare('SELECT * FROM crops ORDER BY name ASC').all();
@@ -17,8 +16,7 @@ exports.getCrop = (req, res, next) => {
         res.json({ success: true, crop, calendar });
     } catch (err) { next(err); }
 };
-
-// ---- ADMIN: manage crop database ----
+// ADMIN: manage crop database
 exports.createCrop = (req, res, next) => {
     try {
         const { name, season, soil_type, ph_min, ph_max, description, image_url } = req.body;
@@ -51,8 +49,7 @@ exports.deleteCrop = (req, res, next) => {
         res.json({ success: true, message: 'Crop removed.' });
     } catch (err) { next(err); }
 };
-
-// ---- FARMER: crop calendar (their scheduled activities) ----
+// FARMER: crop calendar (their scheduled activities)
 exports.myCalendar = (req, res, next) => {
     try {
         const activities = db.prepare(`
@@ -106,8 +103,7 @@ exports.applyCropTemplate = (req, res, next) => {
         res.status(201).json({ success: true, message: `${calendarItems.length} activities scheduled from crop calendar template.` });
     } catch (err) { next(err); }
 };
-
-// ---- FARMER: crop recommendation using latest soil report ----
+// FARMER: crop recommendation using latest soil report
 exports.getCropRecommendation = (req, res, next) => {
     try {
         const report = db.prepare(`
@@ -126,8 +122,7 @@ exports.getCropRecommendation = (req, res, next) => {
         res.json({ success: true, hasReport: true, report, recommendations });
     } catch (err) { next(err); }
 };
-
-// ---- FARMER: fertilizer recommendation using latest soil report ----
+// FARMER: fertilizer recommendation using latest soil report
 exports.getFertilizerRecommendation = (req, res, next) => {
     try {
         const report = db.prepare(`

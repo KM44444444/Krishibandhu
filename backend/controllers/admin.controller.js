@@ -48,8 +48,7 @@ exports.systemStats = (req, res, next) => {
         });
     } catch (err) { next(err); }
 };
-
-// ---- ADMIN: monitor all consultations platform-wide ----
+// ADMIN: monitor all consultations platform-wide
 exports.listConsultations = (req, res, next) => {
     try {
         const { status, type } = req.query;
@@ -69,8 +68,7 @@ exports.listConsultations = (req, res, next) => {
         res.json({ success: true, consultations });
     } catch (err) { next(err); }
 };
-
-// ---- GOVERNMENT / ADMIN alerts ----
+// GOVERNMENT / ADMIN alerts
 exports.listAlerts = (req, res, next) => {
     try {
         const alerts = db.prepare(`

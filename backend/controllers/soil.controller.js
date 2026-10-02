@@ -1,7 +1,6 @@
 const db = require('../config/database');
 const { createNotification } = require('../services/notification.service');
-
-// ---- FARMER: create a soil request ----
+// FARMER: create a soil request
 exports.createRequest = (req, res, next) => {
     try {
         const { farm_id, request_type } = req.body;
@@ -14,8 +13,7 @@ exports.createRequest = (req, res, next) => {
         res.status(201).json({ success: true, message: 'Soil testing request submitted. The government office will process it.', request });
     } catch (err) { next(err); }
 };
-
-// ---- FARMER: list my requests + reports ----
+// FARMER: list my requests + reports
 exports.myRequests = (req, res, next) => {
     try {
         const requests = db.prepare(`
@@ -30,8 +28,7 @@ exports.myRequests = (req, res, next) => {
         res.json({ success: true, requests });
     } catch (err) { next(err); }
 };
-
-// ---- FARMER: most recent verified report ----
+// FARMER: most recent verified report
 exports.myLatestReport = (req, res, next) => {
     try {
         const report = db.prepare(`
@@ -46,8 +43,7 @@ exports.myLatestReport = (req, res, next) => {
         res.json({ success: true, report: report || null });
     } catch (err) { next(err); }
 };
-
-// ---- GOVERNMENT: list all requests (optionally filter by status) ----
+// GOVERNMENT: list all requests (optionally filter by status)
 exports.listAllRequests = (req, res, next) => {
     try {
         const { status } = req.query;
@@ -64,8 +60,7 @@ exports.listAllRequests = (req, res, next) => {
         res.json({ success: true, requests });
     } catch (err) { next(err); }
 };
-
-// ---- GOVERNMENT: update request status (e.g. move to processing) ----
+// GOVERNMENT: update request status (e.g. move to processing)
 exports.updateRequestStatus = (req, res, next) => {
     try {
         const { status } = req.body;
@@ -79,8 +74,7 @@ exports.updateRequestStatus = (req, res, next) => {
         res.json({ success: true, message: 'Request status updated.' });
     } catch (err) { next(err); }
 };
-
-// ---- GOVERNMENT: submit verified soil report for a request ----
+// GOVERNMENT: submit verified soil report for a request
 exports.submitReport = (req, res, next) => {
     try {
         const { ph, nitrogen, phosphorus, potassium, organic_carbon, moisture, other_parameters, remarks, report_file } = req.body;
@@ -118,8 +112,7 @@ exports.submitReport = (req, res, next) => {
         res.json({ success: true, message: 'Soil report submitted and farmer notified.', report });
     } catch (err) { next(err); }
 };
-
-// ---- Shared: get a single request with its report ----
+// Shared: get a single request with its report
 exports.getRequestDetail = (req, res, next) => {
     try {
         const request = db.prepare(`

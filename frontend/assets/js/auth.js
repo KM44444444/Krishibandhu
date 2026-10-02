@@ -1,6 +1,5 @@
-// ============================================================
+
 // AUTH — login & register form handling
-// ============================================================
 
 function redirectToDashboard(role) {
     window.location.href = `${role}/dashboard.html`;

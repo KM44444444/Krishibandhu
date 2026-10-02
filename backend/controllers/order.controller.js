@@ -1,7 +1,6 @@
 const db = require('../config/database');
 const { createNotification } = require('../services/notification.service');
-
-// ---- BUYER (or farmer): place an order ----
+// BUYER (or farmer): place an order
 // body: { items: [{ product_id, quantity }] }
 exports.createOrder = (req, res, next) => {
     try {
@@ -57,8 +56,7 @@ exports.createOrder = (req, res, next) => {
         res.status(201).json({ success: true, message: 'Order placed successfully.', order });
     } catch (err) { next(err); }
 };
-
-// ---- BUYER: my orders ----
+// BUYER: my orders
 exports.myOrders = (req, res, next) => {
     try {
         const orders = db.prepare('SELECT * FROM orders WHERE buyer_id = ? ORDER BY created_at DESC').all(req.user.id);
@@ -84,8 +82,7 @@ exports.getOrder = (req, res, next) => {
         res.json({ success: true, order: { ...order, items } });
     } catch (err) { next(err); }
 };
-
-// ---- SELLER: orders containing my products ----
+// SELLER: orders containing my products
 exports.sellerOrders = (req, res, next) => {
     try {
         const items = db.prepare(`
@@ -101,8 +98,7 @@ exports.sellerOrders = (req, res, next) => {
         res.json({ success: true, items });
     } catch (err) { next(err); }
 };
-
-// ---- SELLER/ADMIN: update order status ----
+// SELLER/ADMIN: update order status
 exports.updateOrderStatus = (req, res, next) => {
     try {
         const { status } = req.body;

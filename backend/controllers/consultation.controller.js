@@ -1,7 +1,6 @@
 const db = require('../config/database');
 const { createNotification } = require('../services/notification.service');
-
-// ---- FARMER: start a new consultation (chat / consultation / video) ----
+// FARMER: start a new consultation (chat / consultation / video)
 exports.createConsultation = (req, res, next) => {
     try {
         const { type, subject, expert_id } = req.body;
@@ -28,8 +27,7 @@ exports.createConsultation = (req, res, next) => {
         res.status(201).json({ success: true, message: 'Request submitted.', consultation });
     } catch (err) { next(err); }
 };
-
-// ---- FARMER: my consultations ----
+// FARMER: my consultations
 exports.myConsultations = (req, res, next) => {
     try {
         const consultations = db.prepare(`
@@ -41,8 +39,7 @@ exports.myConsultations = (req, res, next) => {
         res.json({ success: true, consultations });
     } catch (err) { next(err); }
 };
-
-// ---- EXPERT: consultations assigned to / open for me ----
+// EXPERT: consultations assigned to / open for me
 exports.expertConsultations = (req, res, next) => {
     try {
         const consultations = db.prepare(`
@@ -54,8 +51,7 @@ exports.expertConsultations = (req, res, next) => {
         res.json({ success: true, consultations });
     } catch (err) { next(err); }
 };
-
-// ---- EXPERT: accept an open consultation ----
+// EXPERT: accept an open consultation
 exports.acceptConsultation = (req, res, next) => {
     try {
         const consultation = db.prepare('SELECT * FROM consultations WHERE id = ?').get(req.params.id);
@@ -84,8 +80,7 @@ exports.updateConsultationStatus = (req, res, next) => {
         res.json({ success: true, message: 'Status updated.' });
     } catch (err) { next(err); }
 };
-
-// ---- Messages within a consultation (used for chat) ----
+// Messages within a consultation (used for chat)
 exports.getMessages = (req, res, next) => {
     try {
         const consultation = db.prepare('SELECT * FROM consultations WHERE id = ?').get(req.params.id);

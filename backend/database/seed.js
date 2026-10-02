@@ -5,14 +5,12 @@ console.log('🌱 Seeding KrishiBandhu database...');
 
 const hash = (pw) => bcrypt.hashSync(pw, 10);
 const DEMO_PASSWORD = 'password123';
-
-// ---------- Clear existing data (idempotent re-seed) ----------
+// Clear existing data (idempotent re-seed)
 const tables = ['notifications', 'consultation_messages', 'consultations', 'order_items', 'orders',
     'products', 'soil_reports', 'soil_requests', 'farmer_activities', 'crop_calendar', 'crops',
     'farms', 'alerts', 'videos', 'users'];
 tables.forEach(t => db.prepare(`DELETE FROM ${t}`).run());
-
-// ---------- USERS (one demo account per role) ----------
+// USERS (one demo account per role)
 const insertUser = db.prepare(`INSERT INTO users (name, email, password, phone, role, status) VALUES (?, ?, ?, ?, ?, 'active')`);
 
 const users = {
@@ -24,8 +22,7 @@ const users = {
     seller: insertUser.run('Green Agro Store', 'seller@krishibandhu.com', hash(DEMO_PASSWORD), '9876500005', 'seller').lastInsertRowid,
     expert: insertUser.run('Dr. Sharma', 'expert@krishibandhu.com', hash(DEMO_PASSWORD), '9876500006', 'expert').lastInsertRowid,
 };
-
-// ---------- CROPS + CALENDAR TEMPLATES ----------
+// CROPS + CALENDAR TEMPLATES
 const insertCrop = db.prepare(`INSERT INTO crops (name, season, soil_type, ph_min, ph_max, description, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)`);
 const insertCalendar = db.prepare(`INSERT INTO crop_calendar (crop_id, activity, start_day, end_day, description) VALUES (?, ?, ?, ?, ?)`);
 
@@ -52,8 +49,7 @@ cropDefs.forEach(c => {
     ];
     activities.forEach(a => insertCalendar.run(id, a.activity, a.start_day, a.end_day, a.description));
 });
-
-// ---------- FARM ----------
+// FARM
 const farmId = db.prepare(`
     INSERT INTO farms (farmer_id, farm_name, land_area, land_unit, location, current_crop, irrigation_type, land_type)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -63,8 +59,7 @@ db.prepare(`
     INSERT INTO farms (farmer_id, farm_name, land_area, land_unit, location, current_crop, irrigation_type, land_type)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `).run(users.farmer, 'Riverside Plot', 2.8, 'acre', 'Near Narmada River, Sehore', 'Maize', 'Canal Irrigation', 'Clay Soil');
-
-// ---------- SOIL REQUEST + VERIFIED REPORT ----------
+// SOIL REQUEST + VERIFIED REPORT
 const requestId = db.prepare(`
     INSERT INTO soil_requests (farmer_id, farm_id, request_type, status) VALUES (?, ?, 'standard', 'completed')
 `).run(users.farmer, farmId).lastInsertRowid;
@@ -78,8 +73,7 @@ db.prepare(`
 db.prepare(`
     INSERT INTO soil_requests (farmer_id, farm_id, request_type, status) VALUES (?, ?, 'standard', 'pending')
 `).run(users.farmer2, null);
-
-// ---------- FARMER ACTIVITIES (crop calendar instances) ----------
+// FARMER ACTIVITIES (crop calendar instances)
 const insertActivity = db.prepare(`
     INSERT INTO farmer_activities (farmer_id, farm_id, crop_id, activity, activity_date, status)
     VALUES (?, ?, ?, ?, date('now', ?), 'upcoming')
@@ -89,8 +83,7 @@ insertActivity.run(users.farmer, farmId, cropIds['Wheat'], 'Fertilizer Applicati
 insertActivity.run(users.farmer, farmId, cropIds['Wheat'], 'Pest Control', '+10 days');
 insertActivity.run(users.farmer, farmId, cropIds['Wheat'], 'Harvesting', '+26 days');
 insertActivity.run(users.farmer, farmId, cropIds['Maize'], 'Land Preparation', '+30 days');
-
-// ---------- PRODUCTS ----------
+// PRODUCTS
 const insertProduct = db.prepare(`
     INSERT INTO products (seller_id, name, description, category, price, stock, status) VALUES (?, ?, ?, ?, ?, ?, 'active')
 `);
@@ -100,16 +93,14 @@ insertProduct.run(users.seller, 'Hybrid Maize Seeds (5kg)', 'High-yield hybrid m
 insertProduct.run(users.seller, 'Certified Wheat Seeds (40kg)', 'High-germination certified wheat seed, rabi season.', 'Seeds', 2100, 60);
 insertProduct.run(users.seller, 'Drip Irrigation Kit (1 acre)', 'Complete drip irrigation setup for water-efficient farming.', 'Equipment', 8500, 15);
 insertProduct.run(users.seller, 'Neem-based Pesticide (1L)', 'Organic pest control solution safe for most crops.', 'Pesticide', 450, 100);
-
-// ---------- ORDER (demo) ----------
+// ORDER (demo)
 const products = db.prepare('SELECT * FROM products LIMIT 2').all();
 const orderTotal = products.reduce((sum, p) => sum + p.price * 2, 0);
 const orderId = db.prepare(`INSERT INTO orders (buyer_id, total_amount, status) VALUES (?, ?, 'accepted')`).run(users.farmer, orderTotal).lastInsertRowid;
 products.forEach(p => {
     db.prepare(`INSERT INTO order_items (order_id, product_id, seller_id, quantity, price) VALUES (?, ?, ?, 2, ?)`).run(orderId, p.id, p.seller_id, p.price);
 });
-
-// ---------- CONSULTATIONS ----------
+// CONSULTATIONS
 const consultId = db.prepare(`
     INSERT INTO consultations (farmer_id, expert_id, type, subject, status) VALUES (?, ?, 'chat', 'Yellowing leaves on wheat crop', 'in_progress')
 `).run(users.farmer, users.expert).lastInsertRowid;
@@ -121,19 +112,16 @@ db.prepare(`INSERT INTO consultation_messages (consultation_id, sender_id, messa
 db.prepare(`
     INSERT INTO consultations (farmer_id, type, subject, status) VALUES (?, 'consultation', 'Best irrigation schedule for maize', 'open')
 `).run(users.farmer2);
-
-// ---------- VIDEOS ----------
+// VIDEOS
 const insertVideo = db.prepare(`INSERT INTO videos (title, category, youtube_url, description, status) VALUES (?, ?, ?, ?, 'active')`);
 insertVideo.run('Wheat Farming Complete Guide', 'Farming Guides', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'Step-by-step guide to wheat cultivation from sowing to harvest.');
 insertVideo.run('Understanding Your Soil Report', 'Soil Guides', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'How to read pH, N, P, K values and what they mean for your crop.');
 insertVideo.run('Identifying Common Crop Diseases', 'Disease Guides', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'Visual guide to spotting early signs of common plant diseases.');
 insertVideo.run('Drip Irrigation Setup Tutorial', 'Other Agricultural Guides', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'How to install and maintain a drip irrigation system.');
-
-// ---------- GOVERNMENT ALERT ----------
+// GOVERNMENT ALERT
 const alertId = db.prepare(`INSERT INTO alerts (posted_by, title, message) VALUES (?, ?, ?)`)
     .run(users.government, 'New Government Scheme for Farmers', 'PM-KISAN installment for this quarter has been released. Check your bank account.').lastInsertRowid;
-
-// ---------- NOTIFICATIONS (farmer) ----------
+// NOTIFICATIONS (farmer)
 const insertNotif = db.prepare(`INSERT INTO notifications (user_id, title, message, type, reference_id, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))`);
 insertNotif.run(users.farmer, 'Soil Report Ready', 'Your soil report is ready. Please check.', 'soil_report', requestId, 0, '-13 days');
 insertNotif.run(users.farmer, 'Order Confirmed', `Your order #ORD${orderId} has been confirmed.`, 'order', orderId, 0, '-14 days');

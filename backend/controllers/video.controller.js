@@ -11,8 +11,7 @@ exports.list = (req, res, next) => {
         res.json({ success: true, videos });
     } catch (err) { next(err); }
 };
-
-// ---- ADMIN ----
+// ADMIN
 exports.listAll = (req, res, next) => {
     try {
         const videos = db.prepare('SELECT * FROM videos ORDER BY created_at DESC').all();

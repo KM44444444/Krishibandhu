@@ -1,6 +1,5 @@
 const db = require('../config/database');
-
-// ---- PUBLIC (any logged-in user): browse products ----
+// PUBLIC (any logged-in user): browse products
 exports.browseProducts = (req, res, next) => {
     try {
         const { category, search } = req.query;
@@ -29,8 +28,7 @@ exports.getProduct = (req, res, next) => {
         res.json({ success: true, product });
     } catch (err) { next(err); }
 };
-
-// ---- SELLER: manage own products ----
+// SELLER: manage own products
 exports.myProducts = (req, res, next) => {
     try {
         const products = db.prepare('SELECT * FROM products WHERE seller_id = ? ORDER BY created_at DESC').all(req.user.id);

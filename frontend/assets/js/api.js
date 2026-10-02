@@ -1,6 +1,5 @@
-// ============================================================
+
 // API — central fetch wrapper for the KrishiBandhu backend
-// ============================================================
 
 const API_BASE = 'http://localhost:5001/api';
 
